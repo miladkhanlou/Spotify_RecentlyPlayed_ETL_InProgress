@@ -3,7 +3,9 @@ from spotipy.oauth2 import SpotifyOAuth
 import time
 import spotipy
 import json
+import csv
 import pandas as pd
+
 app = Flask(__name__)
 
 # Set the secret key
@@ -36,9 +38,9 @@ def login():
 
 # 2) Redirect
 @app.route('/redirect')
-def redirect_page():
     #request -> athorization_code (a code)
     #swap this for access token
+def redirect_page():
     sp_oauth = create_spotify_oauth()
     oauth_url = sp_oauth.get_authorize_url()
     session.clear()
@@ -46,7 +48,8 @@ def redirect_page():
     tokenInfo= sp_oauth.get_access_token(code)
     session[TOKEN_INFO] = tokenInfo
     return redirect('http://127.0.0.1:5000/getTracks')
-    return session[TOKEN_INFO]
+    #return session[TOKEN_INFO]
+
 
 #3)getTracks
 @app.route('/getTracks')
@@ -71,7 +74,15 @@ def getTracks():
         'artist name': artist_name,
         "played at": played_at_list,
         'timestamp': timestamp }
-    return songsDict
+    
+    # Write the data to a CSV file
+    filename = 'spotify_tracks.csv'
+    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(songsDict.keys())  # Write the column headers
+        writer.writerows(zip(*songsDict.values()))  # Write the data rows
+        
+    return 'Data written to CSV file: ' + filename
 
 #4)getTracks
 def get_token():
