@@ -2,6 +2,8 @@ from flask import Flask, request, url_for, session, redirect
 from spotipy.oauth2 import SpotifyOAuth
 import time
 import spotipy
+import json
+import pandas as pd
 app = Flask(__name__)
 
 # Set the secret key
@@ -35,6 +37,8 @@ def login():
 # 2) Redirect
 @app.route('/redirect')
 def redirect_page():
+    #request -> athorization_code (a code)
+    #swap this for access token
     sp_oauth = create_spotify_oauth()
     oauth_url = sp_oauth.get_authorize_url()
     session.clear()
@@ -42,10 +46,7 @@ def redirect_page():
     tokenInfo= sp_oauth.get_access_token(code)
     session[TOKEN_INFO] = tokenInfo
     return redirect('http://127.0.0.1:5000/getTracks')
-    #request -> athorization_code (a code)
-    #swap this for access token
-    #Refresh token
-    # return "Redirects from login to here from spotify and provide the Token"
+    return session[TOKEN_INFO]
 
 #3)getTracks
 @app.route('/getTracks')
@@ -56,8 +57,21 @@ def getTracks():
         print('user not logged in')
         redirect('http://127.0.0.1:5000/login')
     sp = spotipy.Spotify(auth = token_info['access_token'])
-    items = sp.current_user_recently_played(limit=50)['items']
-    return str(items)
+    items = sp.current_user_recently_played(limit=50)
+    song_name = []
+    artist_name = []
+    played_at_list = []
+    timestamp = []
+    for songs in items['items']:
+        song_name.append(songs["track"]["name"])
+        artist_name.append(songs["track"]["album"]["artists"][0]["name"])
+        played_at_list.append(songs["played_at"])
+        timestamp.append(songs["played_at"][0:10])
+    songsDict = {"song name": song_name,
+        'artist name': artist_name,
+        "played at": played_at_list,
+        'timestamp': timestamp }
+    return songsDict
 
 #4)getTracks
 def get_token():
@@ -73,13 +87,6 @@ def get_token():
         token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
     return token_info
 
-
-
 # Run the Flask application
 if __name__ == '__main__':
     app.run()
-
-
-#1) 
-#http://127.0.0.1:5000/redirect?code=AQCQXsAemO6e5ucH_WTLJ2-THog8FJVIz04AJX5nG1f8dIB08j7FkpJdZeJAO8CUJIDqH4Ni0uBYAtLDWPw_003AIrjVfytChzN2Qys22kIo3T9ECjhpNENVxRv0vtttvsziipt-PGNhaeYlIhT4k-sbqnZCc8slH7moVlXFCQIYhKvZ1Kxlit8AJRvoVzBHMTaMRs8
-#code: AQCQXsAemO6e5ucH_WTLJ2-THog8FJVIz04AJX5nG1f8dIB08j7FkpJdZeJAO8CUJIDqH4Ni0uBYAtLDWPw_003AIrjVfytChzN2Qys22kIo3T9ECjhpNENVxRv0vtttvsziipt-PGNhaeYlIhT4k-sbqnZCc8slH7moVlXFCQIYhKvZ1Kxlit8AJRvoVzBHMTaMRs8
