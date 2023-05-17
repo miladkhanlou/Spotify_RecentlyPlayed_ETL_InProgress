@@ -1,0 +1,34 @@
+1. Imports:
+    Flask --> 
+    url_for -->
+    session -->
+    request -->
+    spotipy.oauth2 import SpotifyOAuth -->
+
+2. 
+    a. app.secret_key
+    b. app.config
+    c. sp_oauth = SpotifyOAuth(
+         client_id='da5408f13b3e4c93897e81d13139921c',
+         client_secret='c1b98d403dde49baa69af72935776c74',
+         redirect_uri='http://127.0.0.1:5000/redirect',
+         scope='user-library-read user-top-read user-read-recently-played'
+     )
+    d. sp_oauth.sp_oauth.get_authorize_url()
+    e. @app.route('')
+    f. session.clear()
+    g. code = request.args.get('code') 
+    h. tokenInfo = request.args.get_access_token(code)
+    i. session[TOKEN_INFO] = tokenInfo
+    j. sp = spotipy.Spotify(auth = token_info['access_token'])
+    k. items = sp.current_user_recently_played(limit=50)
+    l. token_info = session.get(TOKEN_INFO, None)
+    Whats difference between h and l? Which one generates the Access Token
+    m. return redirect('http://127.0.0.1:5000/getTracks')
+
+3. Functions:
+    a. create_spotify_oauth()
+    b. redirect_page()
+    c. getTracks()
+    
+

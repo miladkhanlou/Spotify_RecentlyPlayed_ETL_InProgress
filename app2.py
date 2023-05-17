@@ -78,13 +78,37 @@ def getTracks():
 
     # Write the data to a CSV file
     filename = 'spotify_tracks.csv'
-    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(songsDict.keys())  # Write the column headers
-        writer.writerows(zip(*songsDict.values()))  # Write the data rows
-    
-    return 'Data written to CSV file: ' + filename
+    recently_played_df = pd.DataFrame(songsDict)
 
+    if check_if_valid_data(recently_played_df):
+        checked_data = "Data valid, proceed to load stage"
+
+    # writeTo_csv = recently_played_df.to_csv(filename, index=0)
+#Check for valid data
+def check_if_valid_data(df):
+   #check if dataframe is empty
+   if df.empty:
+       print("No songs downloaded. Finishing the execution")
+       return False
+   
+#    #Primary Key Check:
+#    if pd.Series(df["played at"]).is_unique():
+#        pass
+#    else:
+#        raise Exception("Primary key check is violated")
+   
+   #check for the null values
+   if df.isnull().values.any():
+       raise Exception("Null value found")
+   
+#    #check that all timestamps are of yesterday's songs date
+#    yesterday = datetime.datetime.now() - datetime.datetime(day = 1)
+#    yesterday = yesterday.replace(hour =0, minute=0, second=0, microsecond=0)
+#    timestamps = df['timestamp'].tolist()
+#    for timestamp in timestamps:
+#        if datetime.datetime.strptime(timestamp, "%Y-%m-%d") != yesterday: #string parse time,convert a string representing a date or time into a datetime object.
+#            raise Exception("at leaset one of returned songs not for yesterday")
+       
 #4)getTracks
 def get_token():
     # check if there is any token data
