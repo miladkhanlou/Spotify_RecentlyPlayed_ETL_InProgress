@@ -2,102 +2,102 @@ from flask import Flask, request, url_for, session, redirect
 from spotipy.oauth2 import SpotifyOAuth
 import time
 import spotipy
-import json
 import csv
-import pandas as pd
 
 app = Flask(__name__)
 
-# Set the secret key
-app.secret_key = "ailsdbnaskljdn1312o3pih"
-app.config['SESSION_COOKIE_NAME'] = 'Milad cookie'
+# Set secret key and session configuration
+app.secret_key = "YOUR_SECRET_KEY"  # Replace with your own secret key
+app.config['SESSION_COOKIE_NAME'] = 'SpotifyCookie'
 TOKEN_INFO = 'token_info'
 
-# Create Spotify OAuth object
+# Create a Spotify OAuth object with the necessary credentials and scopes
 def create_spotify_oauth():
-    sp_oauth = SpotifyOAuth(
-        client_id='da5408f13b3e4c93897e81d13139921c',
-        client_secret='c1b98d403dde49baa69af72935776c74',
+    return SpotifyOAuth(
+        client_id='YOUR_CLIENT_ID',
+        client_secret='YOUR_CLIENT_SECRET',
         redirect_uri='http://127.0.0.1:5000/redirect',
         scope='user-library-read user-top-read user-read-recently-played'
     )
-    return(sp_oauth)
 
-# Test
+# Home route
 @app.route('/')
 def index():
-    return "Just a home page"
+    return "Welcome to the Spotify Recent Tracks App!"
 
-# 1) Login: on spotify for token code
+# 1) Spotify Login Route: Directs the user to Spotify for authorization
 @app.route('/login')
 def login():
-    session.clear()
+    session.clear()  # Clear the session before a new login
     sp_oauth = create_spotify_oauth()
-    oauth_url = sp_oauth.get_authorize_url()
-    return redirect(oauth_url)
+    authorization_url = sp_oauth.get_authorize_url()
+    return redirect(authorization_url)
 
-# 2) Redirect
+# 2) Redirect Route: Handles the callback from Spotify after user login
 @app.route('/redirect')
-    #request -> athorization_code (a code)
-    #swap this for access token
 def redirect_page():
     sp_oauth = create_spotify_oauth()
-    oauth_url = sp_oauth.get_authorize_url()
-    session.clear()
     code = request.args.get('code')
-    tokenInfo= sp_oauth.get_access_token(code)
-    session[TOKEN_INFO] = tokenInfo
-    return redirect('http://127.0.0.1:5000/getTracks')
-    #return session[TOKEN_INFO]
+    token_info = sp_oauth.get_access_token(code)  # Exchange authorization code for access token
+    session[TOKEN_INFO] = token_info  # Store token info in session
+    return redirect('/getTracks')  # Redirect to the getTracks route
 
-
-#3)getTracks
+# 3) Get Recently Played Tracks Route: Retrieves and writes recently played tracks to a CSV
 @app.route('/getTracks')
-def getTracks():
+def get_tracks():
     try:
         token_info = get_token()
-    except:
-        print('user not logged in')
-        redirect('http://127.0.0.1:5000/login')
-    sp = spotipy.Spotify(auth = token_info['access_token'])
-    items = sp.current_user_recently_played(limit=50)
-    song_name = []
-    artist_name = []
-    played_at_list = []
-    timestamp = []
-    for songs in items['items']:
-        song_name.append(songs["track"]["name"])
-        artist_name.append(songs["track"]["album"]["artists"][0]["name"])
-        played_at_list.append(songs["played_at"])
-        timestamp.append(songs["played_at"][0:10])
-    songsDict = {"song name": song_name,
-        'artist name': artist_name,
-        "played at": played_at_list,
-        'timestamp': timestamp }
+    except Exception as e:
+        print(f'Error: {e}')
+        return redirect('/login')
     
-    # Write the data to a CSV file
-    filename = 'spotify_tracks.csv'
-    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+    # Use Spotipy client with the access token
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    recent_tracks = sp.current_user_recently_played(limit=50)
+    
+    # Extract track data
+    song_names = []
+    artist_names = []
+    played_at_list = []
+    timestamps = []
+    
+    for track in recent_tracks['items']:
+        song_names.append(track["track"]["name"])
+        artist_names.append(track["track"]["album"]["artists"][0]["name"])
+        played_at_list.append(track["played_at"])
+        timestamps.append(track["played_at"][0:10])
+    
+    # Create a dictionary of track details
+    tracks_data = {
+        "Song Name": song_names,
+        "Artist Name": artist_names,
+        "Played At": played_at_list,
+        "Timestamp": timestamps
+    }
+    
+    # Write the track data to a CSV file
+    csv_filename = 'spotify_recent_tracks.csv'
+    with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(songsDict.keys())  # Write the column headers
-        writer.writerows(zip(*songsDict.values()))  # Write the data rows
+        writer.writerow(tracks_data.keys())  # Write column headers
+        writer.writerows(zip(*tracks_data.values()))  # Write track data rows
         
-    return 'Data written to CSV file: ' + filename
+    return f'Data written to CSV file: {csv_filename}'
 
-#4)getTracks
+# 4) Token Management: Retrieve or refresh token as needed
 def get_token():
-    # check if there is any token data
-    # check if the token is spired or not
     token_info = session.get(TOKEN_INFO, None)
     if not token_info:
-        raise "exeption"
+        raise Exception("User not logged in")
+
+    # Check if the token is expired and refresh if needed
     now = int(time.time())
-    isExpired = token_info['expires_at'] - now < 60
-    if isExpired:
+    is_expired = token_info['expires_at'] - now < 60
+    if is_expired:
         sp_oauth = create_spotify_oauth()
         token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
     return token_info
 
-# Run the Flask application
+# Run the Flask app
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
